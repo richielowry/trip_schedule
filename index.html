@@ -7,125 +7,148 @@
 
 <style>
 :root {
-  --bg: #f2f4f8;
+  --bg: #f4f6fa;
   --card: #ffffff;
-  --primary: #1f2937;
-  --accent: #2563eb;
+  --trip: #2563eb;
+  --holiday: #d97706;
+  --text: #111827;
   --muted: #6b7280;
-  --shadow: 0 10px 25px rgba(0,0,0,0.06);
+  --shadow: 0 4px 10px rgba(0,0,0,0.05);
 }
 
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
-  padding: 24px 16px 60px;
-  color: var(--primary);
+  padding: 20px 14px 50px;
+  color: var(--text);
 }
 
 h1 {
   text-align: center;
   font-weight: 600;
-  margin-bottom: 32px;
+  margin-bottom: 25px;
 }
 
-.trip-card {
+.card {
   background: var(--card);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
   box-shadow: var(--shadow);
-  transition: transform 0.2s ease;
 }
 
-.trip-card:hover {
-  transform: translateY(-2px);
-}
-
-.header {
+.row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-}
-
-.logo {
-  font-size: 32px;
-  width: 48px;
-  text-align: center;
-}
-
-.title {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.date {
-  color: var(--muted);
-  margin-top: 6px;
+  gap: 6px;
   font-size: 14px;
 }
 
-.countdown {
-  margin-top: 12px;
+.title {
   font-weight: 600;
-  color: var(--accent);
 }
 
-.duration {
-  margin-top: 4px;
-  font-size: 13px;
+.trip { color: var(--trip); }
+.holiday { color: var(--holiday); }
+
+.meta {
   color: var(--muted);
 }
 
-.live {
-  margin-top: 12px;
+.badge {
   font-weight: 600;
-  color: #16a34a;
 }
 
 .empty {
   text-align: center;
-  margin-top: 50px;
   color: var(--muted);
-}
-
-.footer {
-  text-align: center;
   margin-top: 40px;
-  font-size: 12px;
-  color: var(--muted);
 }
 </style>
 </head>
 <body>
 
-<h1>Upcoming Trips</h1>
-<div id="trips"></div>
-<div class="footer">Rolling 12-Month Travel Overview</div>
+<h1>Travel & Irish Bank Holidays</h1>
+<div id="events"></div>
 
 <script>
 const ICS_URL = "https://calendar.google.com/calendar/ical/reggmyster%40gmail.com/private-98c5d3a6db4b47b17c7a083cc465a659/basic.ics";
+const CACHE_KEY = "travelDashboardData";
+const CACHE_TIME = 24 * 60 * 60 * 1000;
 
-async function fetchCalendar() {
-  const proxy = "https://api.allorigins.win/raw?url=";
-  const response = await fetch(proxy + encodeURIComponent(ICS_URL));
-  return await response.text();
+// Flag detection map
+const countryMap = {
+  "ireland": "🇮🇪",
+  "dublin": "🇮🇪",
+  "cork": "🇮🇪",
+  "galway": "🇮🇪",
+
+  "poland": "🇵🇱",
+  "krakow": "🇵🇱",
+
+  "spain": "🇪🇸",
+  "los alcázares": "🇪🇸",
+  "madrid": "🇪🇸",
+  "barcelona": "🇪🇸",
+
+  "uk": "🇬🇧",
+  "london": "🇬🇧",
+
+  "france": "🇫🇷",
+  "italy": "🇮🇹",
+  "germany": "🇩🇪",
+  "portugal": "🇵🇹",
+  "usa": "🇺🇸",
+  "new york": "🇺🇸"
+};
+
+async function fetchWithCache() {
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    const parsed = JSON.parse(cached);
+    if (Date.now() - parsed.timestamp < CACHE_TIME) {
+      return parsed.data;
+    }
+  }
+
+  const data = await fetchFreshData();
+  localStorage.setItem(CACHE_KEY, JSON.stringify({
+    timestamp: Date.now(),
+    data
+  }));
+
+  return data;
 }
 
-function parseICS(data) {
+async function fetchFreshData() {
+  const proxy = "https://api.allorigins.win/raw?url=";
+  const calRes = await fetch(proxy + encodeURIComponent(ICS_URL));
+  const calText = await calRes.text();
+  const trips = parseTrips(calText);
+
+  const year = new Date().getFullYear();
+  const holidayRes = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/IE`);
+  const holidays = await holidayRes.json();
+
+  return { trips, holidays };
+}
+
+function parseTrips(data) {
   const events = [];
-  const rawEvents = data.split("BEGIN:VEVENT");
+  const raw = data.split("BEGIN:VEVENT");
 
-  rawEvents.forEach(event => {
-    const summaryMatch = event.match(/SUMMARY:(.*)/);
-    const startMatch = event.match(/DTSTART.*:(.*)/);
-    const endMatch = event.match(/DTEND.*:(.*)/);
+  raw.forEach(e => {
+    const summary = e.match(/SUMMARY:(.*)/);
+    const start = e.match(/DTSTART.*:(.*)/);
+    const end = e.match(/DTEND.*:(.*)/);
 
-    if (summaryMatch && startMatch) {
+    if (summary && start && summary[1].toLowerCase().includes("trip")) {
       events.push({
-        title: summaryMatch[1].trim(),
-        start: parseDate(startMatch[1]),
-        end: endMatch ? parseDate(endMatch[1]) : null
+        title: summary[1].trim(),
+        start: parseDate(start[1]),
+        end: end ? parseDate(end[1]) : null
       });
     }
   });
@@ -133,118 +156,133 @@ function parseICS(data) {
   return events;
 }
 
-function parseDate(dateStr) {
-  if (dateStr.includes("T")) {
-    return new Date(dateStr.replace(/(\d{8})T(\d{6})Z/, "$1T$2Z"));
-  } else {
-    return new Date(
-      dateStr.substring(0,4),
-      dateStr.substring(4,6)-1,
-      dateStr.substring(6,8)
-    );
-  }
-}
-
-function filterTrips(events) {
-  const now = new Date();
-  const twelveMonths = new Date();
-  twelveMonths.setMonth(now.getMonth() + 12);
-
-  return events.filter(e =>
-    e.title.toLowerCase().includes("trip") &&
-    e.start <= twelveMonths &&
-    (e.end || e.start) >= now
-  ).sort((a,b) => a.start - b.start);
+function parseDate(s) {
+  return new Date(
+    s.substring(0,4),
+    s.substring(4,6)-1,
+    s.substring(6,8)
+  );
 }
 
 function daysBetween(a,b) {
-  return Math.ceil((b - a) / (1000*60*60*24));
+  return Math.ceil((b - a)/(1000*60*60*24));
 }
 
-function getTripEmoji(title) {
+function getFlag(title) {
   const t = title.toLowerCase();
-
-  if (t.includes("beach") || t.includes("miami") || t.includes("hawaii")) return "🏖️";
-  if (t.includes("japan") || t.includes("tokyo")) return "🗾";
-  if (t.includes("ski") || t.includes("mountain")) return "🏔️";
-  if (t.includes("europe")) return "🇪🇺";
-  if (t.includes("new york")) return "🗽";
-  if (t.includes("flight")) return "✈️";
-
+  for (const key in countryMap) {
+    if (t.includes(key)) return countryMap[key];
+  }
   return "🌍";
 }
 
-function renderTrips(trips) {
-  const container = document.getElementById("trips");
-  const now = new Date();
+function isIreland(title) {
+  const t = title.toLowerCase();
+  return t.includes("ireland") ||
+         t.includes("dublin") ||
+         t.includes("cork") ||
+         t.includes("galway");
+}
 
-  if (trips.length === 0) {
-    container.innerHTML = "<div class='empty'>No trips in the next 12 months ✈️</div>";
+function overlaps(trip, holidayDate) {
+  const end = trip.end || trip.start;
+  return holidayDate >= trip.start && holidayDate <= end;
+}
+
+function render(data) {
+  const container = document.getElementById("events");
+  container.innerHTML = "";
+
+  const now = new Date();
+  const futureLimit = new Date();
+  futureLimit.setMonth(now.getMonth() + 12);
+
+  let combined = [];
+
+  data.trips.forEach(t => {
+    if (t.start <= futureLimit) {
+      combined.push({ type: "trip", ...t });
+    }
+  });
+
+  data.holidays.forEach(h => {
+    const date = new Date(h.date);
+    if (date >= now && date <= futureLimit) {
+      const conflict = data.trips.some(t => overlaps(t, date));
+      if (!conflict) {
+        combined.push({
+          type: "holiday",
+          title: h.localName,
+          start: date,
+          end: null
+        });
+      }
+    }
+  });
+
+  combined.sort((a,b) => a.start - b.start);
+
+  if (combined.length === 0) {
+    container.innerHTML = "<div class='empty'>No upcoming trips or holidays</div>";
     return;
   }
 
-  trips.forEach(trip => {
+  combined.forEach(e => {
     const card = document.createElement("div");
-    card.className = "trip-card";
+    card.className = "card";
 
-    const header = document.createElement("div");
-    header.className = "header";
+    const row = document.createElement("div");
+    row.className = "row";
 
-    const logo = document.createElement("div");
-    logo.className = "logo";
-    logo.textContent = getTripEmoji(trip.title);
+    const title = document.createElement("span");
+    title.className = "title " + e.type;
 
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = trip.title.replace(/trip/i, "").trim();
-
-    header.appendChild(logo);
-    header.appendChild(title);
-
-    const date = document.createElement("div");
-    date.className = "date";
-
-    const endDate = trip.end || trip.start;
-
-    date.textContent =
-      trip.start.toDateString() + " – " +
-      endDate.toDateString();
-
-    const countdown = document.createElement("div");
-    countdown.className = "countdown";
-
-    const daysToStart = daysBetween(now, trip.start);
-    const daysToEnd = daysBetween(now, endDate);
-
-    if (now >= trip.start && now <= endDate) {
-      countdown.className = "live";
-      countdown.textContent = "Happening now";
+    if (e.type === "trip") {
+      const flag = getFlag(e.title);
+      const plane = isIreland(e.title) ? "" : " ✈️";
+      title.textContent = flag + " " +
+        e.title.replace(/trip/i,"").trim() + plane;
     } else {
-      countdown.textContent = daysToStart + " days to go";
+      title.textContent = "🇮🇪 " + e.title + " (Bank Holiday)";
     }
 
-    const duration = document.createElement("div");
-    duration.className = "duration";
-    duration.textContent =
-      (daysBetween(trip.start, endDate) + 1) + " day trip";
+    const date = document.createElement("span");
+    date.className = "meta";
+    const end = e.end || e.start;
 
-    card.appendChild(header);
-    card.appendChild(date);
-    card.appendChild(countdown);
-    card.appendChild(duration);
+    if (e.type === "trip") {
+      date.textContent =
+        e.start.toDateString().slice(4,10) +
+        " – " +
+        end.toDateString().slice(4,10);
+    } else {
+      date.textContent = e.start.toDateString().slice(4,10);
+    }
 
+    const countdown = document.createElement("span");
+    countdown.className = "badge " + e.type;
+    countdown.textContent = daysBetween(now, e.start) + "d";
+
+    row.appendChild(title);
+    row.appendChild(document.createTextNode(" | "));
+    row.appendChild(date);
+    row.appendChild(document.createTextNode(" | "));
+    row.appendChild(countdown);
+
+    if (e.type === "trip") {
+      const duration = document.createElement("span");
+      duration.className = "meta";
+      duration.textContent =
+        " | " + (daysBetween(e.start,end)+1) + "d";
+      row.appendChild(duration);
+    }
+
+    card.appendChild(row);
     container.appendChild(card);
   });
 }
 
-async function init() {
-  const rawData = await fetchCalendar();
-  const events = parseICS(rawData);
-  const trips = filterTrips(events);
-  renderTrips(trips);
-}
-
-init();
+fetchWithCache().then(render);
 </script>
 
 </body>
