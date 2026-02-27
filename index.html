@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Travel Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root {
+  --bg: #f2f4f8;
+  --card: #ffffff;
+  --primary: #1f2937;
+  --accent: #2563eb;
+  --muted: #6b7280;
+  --shadow: 0 10px 25px rgba(0,0,0,0.06);
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  padding: 24px 16px 60px;
+  color: var(--primary);
+}
+
+h1 {
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 32px;
+}
+
+.trip-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease;
+}
+
+.trip-card:hover {
+  transform: translateY(-2px);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo {
+  font-size: 32px;
+  width: 48px;
+  text-align: center;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.date {
+  color: var(--muted);
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.countdown {
+  margin-top: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.duration {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.live {
+  margin-top: 12px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.empty {
+  text-align: center;
+  margin-top: 50px;
+  color: var(--muted);
+}
+
+.footer {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 12px;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<h1>Upcoming Trips</h1>
+<div id="trips"></div>
+<div class="footer">Rolling 12-Month Travel Overview</div>
+
+<script>
+const ICS_URL = "https://calendar.google.com/calendar/ical/reggmyster%40gmail.com/private-98c5d3a6db4b47b17c7a083cc465a659/basic.ics";
+
+async function fetchCalendar() {
+  const proxy = "https://api.allorigins.win/raw?url=";
+  const response = await fetch(proxy + encodeURIComponent(ICS_URL));
+  return await response.text();
+}
+
+function parseICS(data) {
+  const events = [];
+  const rawEvents = data.split("BEGIN:VEVENT");
+
+  rawEvents.forEach(event => {
+    const summaryMatch = event.match(/SUMMARY:(.*)/);
+    const startMatch = event.match(/DTSTART.*:(.*)/);
+    const endMatch = event.match(/DTEND.*:(.*)/);
+
+    if (summaryMatch && startMatch) {
+      events.push({
+        title: summaryMatch[1].trim(),
+        start: parseDate(startMatch[1]),
+        end: endMatch ? parseDate(endMatch[1]) : null
+      });
+    }
+  });
+
+  return events;
+}
+
+function parseDate(dateStr) {
+  if (dateStr.includes("T")) {
+    return new Date(dateStr.replace(/(\d{8})T(\d{6})Z/, "$1T$2Z"));
+  } else {
+    return new Date(
+      dateStr.substring(0,4),
+      dateStr.substring(4,6)-1,
+      dateStr.substring(6,8)
+    );
+  }
+}
+
+function filterTrips(events) {
+  const now = new Date();
+  const twelveMonths = new Date();
+  twelveMonths.setMonth(now.getMonth() + 12);
+
+  return events.filter(e =>
+    e.title.toLowerCase().includes("trip") &&
+    e.start <= twelveMonths &&
+    (e.end || e.start) >= now
+  ).sort((a,b) => a.start - b.start);
+}
+
+function daysBetween(a,b) {
+  return Math.ceil((b - a) / (1000*60*60*24));
+}
+
+function getTripEmoji(title) {
+  const t = title.toLowerCase();
+
+  if (t.includes("beach") || t.includes("miami") || t.includes("hawaii")) return "🏖️";
+  if (t.includes("japan") || t.includes("tokyo")) return "🗾";
+  if (t.includes("ski") || t.includes("mountain")) return "🏔️";
+  if (t.includes("europe")) return "🇪🇺";
+  if (t.includes("new york")) return "🗽";
+  if (t.includes("flight")) return "✈️";
+
+  return "🌍";
+}
+
+function renderTrips(trips) {
+  const container = document.getElementById("trips");
+  const now = new Date();
+
+  if (trips.length === 0) {
+    container.innerHTML = "<div class='empty'>No trips in the next 12 months ✈️</div>";
+    return;
+  }
+
+  trips.forEach(trip => {
+    const card = document.createElement("div");
+    card.className = "trip-card";
+
+    const header = document.createElement("div");
+    header.className = "header";
+
+    const logo = document.createElement("div");
+    logo.className = "logo";
+    logo.textContent = getTripEmoji(trip.title);
+
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = trip.title.replace(/trip/i, "").trim();
+
+    header.appendChild(logo);
+    header.appendChild(title);
+
+    const date = document.createElement("div");
+    date.className = "date";
+
+    const endDate = trip.end || trip.start;
+
+    date.textContent =
+      trip.start.toDateString() + " – " +
+      endDate.toDateString();
+
+    const countdown = document.createElement("div");
+    countdown.className = "countdown";
+
+    const daysToStart = daysBetween(now, trip.start);
+    const daysToEnd = daysBetween(now, endDate);
+
+    if (now >= trip.start && now <= endDate) {
+      countdown.className = "live";
+      countdown.textContent = "Happening now";
+    } else {
+      countdown.textContent = daysToStart + " days to go";
+    }
+
+    const duration = document.createElement("div");
+    duration.className = "duration";
+    duration.textContent =
+      (daysBetween(trip.start, endDate) + 1) + " day trip";
+
+    card.appendChild(header);
+    card.appendChild(date);
+    card.appendChild(countdown);
+    card.appendChild(duration);
+
+    container.appendChild(card);
+  });
+}
+
+async function init() {
+  const rawData = await fetchCalendar();
+  const events = parseICS(rawData);
+  const trips = filterTrips(events);
+  renderTrips(trips);
+}
+
+init();
+</script>
+
+</body>
+</html>
