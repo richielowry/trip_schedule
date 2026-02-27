@@ -252,6 +252,33 @@ header p {
   to { transform: rotate(360deg); }
 }
 
+.warn-msg {
+  text-align: center;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.warn-msg button {
+  margin-left: 8px;
+  padding: 3px 12px;
+  border: 1px solid #d97706;
+  background: #fff;
+  color: #d97706;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.warn-msg button:hover {
+  background: #fffbeb;
+}
+
 .error-msg {
   text-align: center;
   color: #dc2626;
@@ -366,7 +393,9 @@ async function fetchWithCache() {
     try {
       const parsed = JSON.parse(cached);
       if (Date.now() - parsed.timestamp < CACHE_TIME) {
-        return parsed.data;
+        var d = parsed.data;
+        if (typeof d.tripsLoaded === "undefined") d.tripsLoaded = d.trips.length > 0;
+        return d;
       }
     } catch (e) {
       localStorage.removeItem(CACHE_KEY);
@@ -374,13 +403,16 @@ async function fetchWithCache() {
   }
 
   const data = await fetchFreshData();
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      timestamp: Date.now(),
-      data
-    }));
-  } catch (e) {
-    // localStorage may be full or unavailable
+  // Only cache if we got trips — don't cache partial data
+  if (data.tripsLoaded) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        data
+      }));
+    } catch (e) {
+      // localStorage may be full or unavailable
+    }
   }
 
   return data;
@@ -390,48 +422,70 @@ async function fetchViaProxy(url) {
   var proxies = [
     { name: "allorigins-json", build: function(u) { return "https://api.allorigins.win/get?url=" + encodeURIComponent(u); }, json: true },
     { name: "allorigins-raw",  build: function(u) { return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); }, json: false },
-    { name: "corsproxy",       build: function(u) { return "https://corsproxy.io/?" + encodeURIComponent(u); }, json: false }
+    { name: "corsproxy",       build: function(u) { return "https://corsproxy.io/?" + encodeURIComponent(u); }, json: false },
+    { name: "cors-anywhere",   build: function(u) { return "https://cors-proxy.htmldriven.com/?url=" + encodeURIComponent(u); }, json: true, bodyKey: "body" }
   ];
 
   for (var i = 0; i < proxies.length; i++) {
     var p = proxies[i];
     try {
       var controller = new AbortController();
-      var timeoutId = setTimeout(function() { controller.abort(); }, 8000);
+      var timeoutId = setTimeout(function() { controller.abort(); }, 12000);
       var res = await fetch(p.build(url), { signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) continue;
+      var text;
       if (p.json) {
         var data = await res.json();
-        return data.contents;
+        text = p.bodyKey ? data[p.bodyKey] : data.contents;
+      } else {
+        text = await res.text();
       }
-      return await res.text();
+      // Validate that we got actual ICS data, not an error page
+      if (text && text.indexOf("BEGIN:VCALENDAR") !== -1) {
+        return text;
+      }
+      console.warn("Proxy " + p.name + " returned non-ICS data");
     } catch (e) {
       console.warn("Proxy " + p.name + " failed:", e.message);
     }
   }
-  throw new Error("All proxies failed to load calendar data");
+  return null;
 }
 
 async function fetchFreshData() {
-  var calText = await fetchViaProxy(ICS_URL);
-  var trips = parseTrips(calText);
+  // Fetch trips and holidays independently so one failing doesn't block the other
+  var tripsPromise = fetchViaProxy(ICS_URL).then(function(calText) {
+    if (calText) return parseTrips(calText);
+    console.warn("Calendar data unavailable - no trips to show");
+    return [];
+  }).catch(function(e) {
+    console.warn("Trip fetch failed:", e.message);
+    return [];
+  });
 
-  const year = new Date().getFullYear();
-  const years = [year, year + 1];
-  let holidays = [];
-
-  for (const y of years) {
-    const holidayRes = await fetch(
-      "https://date.nager.at/api/v3/PublicHolidays/" + y + "/IE"
-    );
-    if (holidayRes.ok) {
-      const data = await holidayRes.json();
-      holidays = holidays.concat(data);
+  var holidaysPromise = (async function() {
+    var year = new Date().getFullYear();
+    var years = [year, year + 1];
+    var holidays = [];
+    for (var i = 0; i < years.length; i++) {
+      try {
+        var holidayRes = await fetch(
+          "https://date.nager.at/api/v3/PublicHolidays/" + years[i] + "/IE"
+        );
+        if (holidayRes.ok) {
+          var data = await holidayRes.json();
+          holidays = holidays.concat(data);
+        }
+      } catch (e) {
+        console.warn("Holiday fetch failed for " + years[i] + ":", e.message);
+      }
     }
-  }
+    return holidays;
+  })();
 
-  return { trips, holidays };
+  var results = await Promise.all([tripsPromise, holidaysPromise]);
+  return { trips: results[0], holidays: results[1], tripsLoaded: results[0].length > 0 };
 }
 
 function parseTrips(data) {
@@ -519,6 +573,14 @@ function isOngoing(event, now) {
 function render(data) {
   var container = document.getElementById("events");
   container.innerHTML = "";
+
+  // Show warning if trips couldn't be loaded
+  if (!data.tripsLoaded && data.trips.length === 0) {
+    var warn = document.createElement("div");
+    warn.className = "warn-msg";
+    warn.innerHTML = 'Trips could not be loaded. <button onclick="localStorage.removeItem(\'' + CACHE_KEY + '\'); location.reload();">Retry</button>';
+    container.appendChild(warn);
+  }
 
   var now = new Date();
   var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
