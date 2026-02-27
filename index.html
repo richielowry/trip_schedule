@@ -7,20 +7,20 @@
 
 <style>
 :root {
-  --bg: #f4f6fa;
+  --bg: #f3f4f6;
   --card: #ffffff;
-  --trip: #2563eb;
-  --holiday: #d97706;
+  --trip: #1d4ed8;
+  --holiday: #b45309;
   --text: #111827;
   --muted: #6b7280;
-  --shadow: 0 4px 10px rgba(0,0,0,0.05);
+  --shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
-  padding: 20px 14px 50px;
+  padding: 20px 14px 60px;
   color: var(--text);
 }
 
@@ -75,27 +75,22 @@ h1 {
 
 <script>
 const ICS_URL = "https://calendar.google.com/calendar/ical/reggmyster%40gmail.com/private-98c5d3a6db4b47b17c7a083cc465a659/basic.ics";
-const CACHE_KEY = "travelDashboardData";
+const CACHE_KEY = "travelDashboardCache";
 const CACHE_TIME = 24 * 60 * 60 * 1000;
 
-// Flag detection map
 const countryMap = {
   "ireland": "🇮🇪",
   "dublin": "🇮🇪",
   "cork": "🇮🇪",
   "galway": "🇮🇪",
-
   "poland": "🇵🇱",
   "krakow": "🇵🇱",
-
   "spain": "🇪🇸",
-  "los alcázares": "🇪🇸",
+  "los alcazares": "🇪🇸",
   "madrid": "🇪🇸",
   "barcelona": "🇪🇸",
-
   "uk": "🇬🇧",
   "london": "🇬🇧",
-
   "france": "🇫🇷",
   "italy": "🇮🇹",
   "germany": "🇩🇪",
@@ -104,25 +99,72 @@ const countryMap = {
   "new york": "🇺🇸"
 };
 
-async function fetchWithCache() {
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
-    const parsed = JSON.parse(cached);
-    if (Date.now() - parsed.timestamp < CACHE_TIME) {
-      return parsed.data;
-    }
-  }
-
-  const data = await fetchFreshData();
-  localStorage.setItem(CACHE_KEY, JSON.stringify({
-    timestamp: Date.now(),
-    data
-  }));
-
-  return data;
+function unfoldICS(text) {
+  return text.replace(/\r?\n[ \t]/g, "");
 }
 
-async function fetchFreshData() {
+function parseICSDate(value) {
+  const datePart = value.substring(0,8);
+  return new Date(
+    parseInt(datePart.substring(0,4)),
+    parseInt(datePart.substring(4,6)) - 1,
+    parseInt(datePart.substring(6,8))
+  );
+}
+
+function parseTrips(icsText) {
+  const events = [];
+  const data = unfoldICS(icsText);
+  const blocks = data.split("BEGIN:VEVENT");
+
+  blocks.forEach(block => {
+    const summaryMatch = block.match(/SUMMARY:(.+)/);
+    const startMatch = block.match(/DTSTART[^:]*:(.+)/);
+    const endMatch = block.match(/DTEND[^:]*:(.+)/);
+
+    if (!summaryMatch || !startMatch) return;
+
+    const title = summaryMatch[1].trim();
+    if (!title.toLowerCase().includes("trip")) return;
+
+    const startDate = parseICSDate(startMatch[1]);
+    const endDate = endMatch ? parseICSDate(endMatch[1]) : startDate;
+
+    events.push({
+      title: title.replace(/trip/i,"").trim(),
+      start: startDate,
+      end: endDate
+    });
+  });
+
+  return events;
+}
+
+function daysBetween(a,b) {
+  return Math.ceil((b - a)/(1000*60*60*24));
+}
+
+function getFlag(title) {
+  const lower = title.toLowerCase();
+  for (let key in countryMap) {
+    if (lower.includes(key)) return countryMap[key];
+  }
+  return "🌍";
+}
+
+function isIreland(title) {
+  const lower = title.toLowerCase();
+  return lower.includes("ireland") ||
+         lower.includes("dublin") ||
+         lower.includes("cork") ||
+         lower.includes("galway");
+}
+
+function overlaps(trip, holidayDate) {
+  return holidayDate >= trip.start && holidayDate <= trip.end;
+}
+
+async function fetchData() {
   const proxy = "https://api.allorigins.win/raw?url=";
   const calRes = await fetch(proxy + encodeURIComponent(ICS_URL));
   const calText = await calRes.text();
@@ -133,60 +175,6 @@ async function fetchFreshData() {
   const holidays = await holidayRes.json();
 
   return { trips, holidays };
-}
-
-function parseTrips(data) {
-  const events = [];
-  const raw = data.split("BEGIN:VEVENT");
-
-  raw.forEach(e => {
-    const summary = e.match(/SUMMARY:(.*)/);
-    const start = e.match(/DTSTART.*:(.*)/);
-    const end = e.match(/DTEND.*:(.*)/);
-
-    if (summary && start && summary[1].toLowerCase().includes("trip")) {
-      events.push({
-        title: summary[1].trim(),
-        start: parseDate(start[1]),
-        end: end ? parseDate(end[1]) : null
-      });
-    }
-  });
-
-  return events;
-}
-
-function parseDate(s) {
-  return new Date(
-    s.substring(0,4),
-    s.substring(4,6)-1,
-    s.substring(6,8)
-  );
-}
-
-function daysBetween(a,b) {
-  return Math.ceil((b - a)/(1000*60*60*24));
-}
-
-function getFlag(title) {
-  const t = title.toLowerCase();
-  for (const key in countryMap) {
-    if (t.includes(key)) return countryMap[key];
-  }
-  return "🌍";
-}
-
-function isIreland(title) {
-  const t = title.toLowerCase();
-  return t.includes("ireland") ||
-         t.includes("dublin") ||
-         t.includes("cork") ||
-         t.includes("galway");
-}
-
-function overlaps(trip, holidayDate) {
-  const end = trip.end || trip.start;
-  return holidayDate >= trip.start && holidayDate <= end;
 }
 
 function render(data) {
@@ -200,68 +188,68 @@ function render(data) {
   let combined = [];
 
   data.trips.forEach(t => {
-    if (t.start <= futureLimit) {
-      combined.push({ type: "trip", ...t });
+    if (t.start >= now && t.start <= futureLimit) {
+      combined.push({ type:"trip", ...t });
     }
   });
 
   data.holidays.forEach(h => {
     const date = new Date(h.date);
     if (date >= now && date <= futureLimit) {
-      const conflict = data.trips.some(t => overlaps(t, date));
+      const conflict = data.trips.some(t => overlaps(t,date));
       if (!conflict) {
         combined.push({
-          type: "holiday",
-          title: h.localName,
+          type:"holiday",
+          title: h.name,   // ENGLISH VERSION
           start: date,
-          end: null
+          end: date
         });
       }
     }
   });
 
-  combined.sort((a,b) => a.start - b.start);
+  combined.sort((a,b)=>a.start - b.start);
 
   if (combined.length === 0) {
     container.innerHTML = "<div class='empty'>No upcoming trips or holidays</div>";
     return;
   }
 
-  combined.forEach(e => {
+  combined.forEach(e=>{
     const card = document.createElement("div");
-    card.className = "card";
+    card.className="card";
 
     const row = document.createElement("div");
-    row.className = "row";
+    row.className="row";
 
     const title = document.createElement("span");
-    title.className = "title " + e.type;
+    title.className="title "+e.type;
 
-    if (e.type === "trip") {
+    if (e.type==="trip") {
       const flag = getFlag(e.title);
       const plane = isIreland(e.title) ? "" : " ✈️";
-      title.textContent = flag + " " +
-        e.title.replace(/trip/i,"").trim() + plane;
+      title.textContent = flag+" "+e.title+plane;
     } else {
-      title.textContent = "🇮🇪 " + e.title + " (Bank Holiday)";
+      title.textContent = "🇮🇪 "+e.title+" (Bank Holiday)";
     }
 
     const date = document.createElement("span");
-    date.className = "meta";
-    const end = e.end || e.start;
+    date.className="meta";
 
-    if (e.type === "trip") {
+    if (e.type==="trip") {
       date.textContent =
         e.start.toDateString().slice(4,10) +
         " – " +
-        end.toDateString().slice(4,10);
+        e.end.toDateString().slice(4,10);
     } else {
-      date.textContent = e.start.toDateString().slice(4,10);
+      date.textContent =
+        e.start.toDateString().slice(4,10);
     }
 
     const countdown = document.createElement("span");
-    countdown.className = "badge " + e.type;
-    countdown.textContent = daysBetween(now, e.start) + "d";
+    countdown.className="badge "+e.type;
+    countdown.textContent =
+      daysBetween(now,e.start)+"d";
 
     row.appendChild(title);
     row.appendChild(document.createTextNode(" | "));
@@ -269,11 +257,11 @@ function render(data) {
     row.appendChild(document.createTextNode(" | "));
     row.appendChild(countdown);
 
-    if (e.type === "trip") {
+    if (e.type==="trip") {
       const duration = document.createElement("span");
-      duration.className = "meta";
+      duration.className="meta";
       duration.textContent =
-        " | " + (daysBetween(e.start,end)+1) + "d";
+        " | "+(daysBetween(e.start,e.end)+1)+"d";
       row.appendChild(duration);
     }
 
@@ -282,7 +270,7 @@ function render(data) {
   });
 }
 
-fetchWithCache().then(render);
+fetchData().then(render);
 </script>
 
 </body>
