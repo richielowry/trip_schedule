@@ -420,10 +420,16 @@ function parseTrips(data) {
     const end = e.match(/DTEND[^:]*:(.*)/);
 
     if (summary && start && summary[1].toLowerCase().includes("trip")) {
+      var endDate = null;
+      if (end) {
+        // ICS DTEND for all-day events is exclusive, subtract 1 day
+        endDate = parseDate(end[1].trim());
+        endDate.setDate(endDate.getDate() - 1);
+      }
       events.push({
         title: summary[1].trim(),
         start: parseDate(start[1].trim()),
-        end: end ? parseDate(end[1].trim()) : null
+        end: endDate
       });
     }
   });
@@ -606,7 +612,7 @@ function render(data) {
         bottomRow.appendChild(sep);
 
         var duration = document.createElement("span");
-        var numDays = daysBetween(e.start, end) + 1;
+        var numDays = daysBetween(e.start, end) + 1; // inclusive of start and end
         duration.textContent = numDays + " day" + (numDays !== 1 ? "s" : "");
         bottomRow.appendChild(duration);
       }
