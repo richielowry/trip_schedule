@@ -108,15 +108,20 @@ function parseDate(value) {
 
 function adjustEndDate(start, endRaw) {
   if (!endRaw) return start;
-
   const end = parseDate(endRaw);
+  if (end > start) end.setDate(end.getDate() - 1);
+  return end;
+}
 
-  // Google all-day events use exclusive end date
-  if (end > start) {
-    end.setDate(end.getDate() - 1);
+function getNextYearlyOccurrence(originalDate) {
+  const now = new Date();
+  let next = new Date(now.getFullYear(), originalDate.getMonth(), originalDate.getDate());
+
+  if (next < now) {
+    next = new Date(now.getFullYear() + 1, originalDate.getMonth(), originalDate.getDate());
   }
 
-  return end;
+  return next;
 }
 
 function parseCalendar(icsText) {
@@ -128,6 +133,7 @@ function parseCalendar(icsText) {
     const summaryMatch = block.match(/SUMMARY:(.+)/);
     const startMatch = block.match(/DTSTART[^:]*:(.+)/);
     const endMatch = block.match(/DTEND[^:]*:(.+)/);
+    const rruleMatch = block.match(/RRULE:(.+)/);
 
     if (!summaryMatch || !startMatch) return;
 
@@ -140,8 +146,17 @@ function parseCalendar(icsText) {
 
     if (!type) return;
 
-    const startDate = parseDate(startMatch[1]);
-    const endDate = adjustEndDate(startDate, endMatch ? endMatch[1] : null);
+    const originalStart = parseDate(startMatch[1]);
+    let startDate = originalStart;
+    let endDate;
+
+    // Handle yearly recurring events
+    if (rruleMatch && rruleMatch[1].includes("FREQ=YEARLY")) {
+      startDate = getNextYearlyOccurrence(originalStart);
+      endDate = startDate;
+    } else {
+      endDate = adjustEndDate(startDate, endMatch ? endMatch[1] : null);
+    }
 
     items.push({
       type,
@@ -241,7 +256,6 @@ function render(data) {
       daysBetween(now,e.start)+"d";
 
     const duration = document.createElement("div");
-
     if (e.type==="trip") {
       duration.textContent =
         (daysBetween(e.start,e.end)+1)+"d";
