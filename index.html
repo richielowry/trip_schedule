@@ -72,10 +72,6 @@ h1 {
   color: var(--holiday);
 }
 
-.meta {
-  color: var(--text);
-}
-
 .countdown {
   font-weight: 600;
 }
@@ -110,6 +106,19 @@ function parseDate(value) {
   );
 }
 
+function adjustEndDate(start, endRaw) {
+  if (!endRaw) return start;
+
+  const end = parseDate(endRaw);
+
+  // Google all-day events use exclusive end date
+  if (end > start) {
+    end.setDate(end.getDate() - 1);
+  }
+
+  return end;
+}
+
 function parseCalendar(icsText) {
   const items = [];
   const data = unfoldICS(icsText);
@@ -132,7 +141,7 @@ function parseCalendar(icsText) {
     if (!type) return;
 
     const startDate = parseDate(startMatch[1]);
-    const endDate = endMatch ? parseDate(endMatch[1]) : startDate;
+    const endDate = adjustEndDate(startDate, endMatch ? endMatch[1] : null);
 
     items.push({
       type,
@@ -210,15 +219,12 @@ function render(data) {
     const title = document.createElement("div");
     title.className="title "+e.type;
 
-    if (e.type==="trip") {
-      title.textContent = "✈️ " + e.title;
-    } else if (e.type==="event") {
-      title.textContent = "🎂 " + e.title;
-    } else {
-      title.textContent = "🇮🇪 " + e.title;
-    }
+    if (e.type==="trip") title.textContent = "✈️ " + e.title;
+    else if (e.type==="event") title.textContent = "🎂 " + e.title;
+    else title.textContent = "🇮🇪 " + e.title;
 
     const date = document.createElement("div");
+
     if (e.start.getTime() !== e.end.getTime()) {
       date.textContent =
         e.start.toDateString().slice(4,10) +
@@ -235,6 +241,7 @@ function render(data) {
       daysBetween(now,e.start)+"d";
 
     const duration = document.createElement("div");
+
     if (e.type==="trip") {
       duration.textContent =
         (daysBetween(e.start,e.end)+1)+"d";
