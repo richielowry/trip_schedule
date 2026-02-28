@@ -2,765 +2,255 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Lord Lowry Planner</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Travel Planner</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="apple-touch-icon" href="icon-192.png">
 
 <style>
 :root {
-  --bg: #f0f2f7;
-  --card: #ffffff;
-  --trip: #2563eb;
-  --trip-light: #eff6ff;
-  --trip-border: #3b82f6;
-  --holiday: #d97706;
-  --holiday-light: #fffbeb;
-  --holiday-border: #f59e0b;
-  --ongoing: #059669;
-  --ongoing-light: #ecfdf5;
-  --ongoing-border: #10b981;
-  --text: #111827;
-  --muted: #6b7280;
-  --light-muted: #9ca3af;
-  --divider: #e5e7eb;
-  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
-  --shadow-hover: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
-  --radius: 14px;
-}
-
-* {
-  box-sizing: border-box;
+  --bg:#f7f8fb;
+  --card:#ffffff;
+  --trip:#1d4ed8;
+  --event:#6b7280;
+  --ongoing:#059669;
+  --holiday:#b45309;
+  --muted:#6b7280;
 }
 
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  padding: 0;
-  min-height: 100vh;
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+  background:var(--bg);
 }
 
 .container {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 28px 16px 60px;
+  max-width:520px;
+  margin:auto;
+  padding:16px;
 }
 
-header {
-  text-align: center;
-  margin-bottom: 32px;
+/* HERO */
+.hero {
+  background:var(--trip);
+  color:white;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:18px;
 }
 
-header h1 {
-  font-size: 26px;
-  font-weight: 700;
-  margin: 0 0 6px;
-  letter-spacing: -0.3px;
+.hero h2 {
+  margin:0 0 6px;
+  font-size:18px;
 }
 
-header p {
-  color: var(--muted);
-  font-size: 14px;
-  margin: 0;
+.hero small { opacity:0.9; }
+
+/* Cards */
+.card {
+  background:var(--card);
+  padding:14px;
+  border-radius:12px;
+  margin-bottom:10px;
+  border-left:4px solid var(--event);
 }
 
-.legend {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  margin-bottom: 24px;
-  font-size: 13px;
-  color: var(--muted);
+.card.trip { border-left-color:var(--trip); }
+.card.event { border-left-color:var(--event); }
+.card.ongoing { border-left-color:var(--ongoing); }
+
+.title {
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.meta {
+  font-size:13px;
+  color:var(--muted);
+  margin-top:4px;
 }
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.month {
+  margin:18px 0 8px;
+  font-size:12px;
+  text-transform:uppercase;
+  color:var(--muted);
 }
 
-.legend-dot.trip { background: var(--trip); }
-.legend-dot.holiday { background: var(--holiday); }
-.legend-dot.ongoing { background: var(--ongoing); }
-
-.month-header {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--light-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin: 22px 0 10px 4px;
+.holiday {
+  background:#fff7ed;
+  color:var(--holiday);
+  font-size:13px;
+  padding:8px 12px;
+  border-radius:10px;
+  margin-bottom:6px;
+  display:flex;
+  justify-content:space-between;
 }
 
-.month-header:first-child {
-  margin-top: 0;
-}
-
-/* ── Trip cards: 2-line layout, visually prominent ── */
-.card-trip {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow);
-  border-left: 5px solid var(--trip-border);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-  cursor: default;
-}
-
-.card-trip:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-1px);
-}
-
-.card-trip.type-ongoing {
-  border-left-color: var(--ongoing-border);
-}
-
-.trip-row-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.trip-title {
-  font-weight: 700;
-  font-size: 17px;
-  line-height: 1.3;
-  flex: 1;
-  min-width: 0;
-  color: var(--trip);
-}
-
-.trip-title.ongoing { color: var(--ongoing); }
-
-.trip-row-bottom {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--muted);
-  flex-wrap: wrap;
-}
-
-.trip-row-bottom .sep {
-  color: var(--divider);
-  font-size: 11px;
-}
-
-/* ── Holiday cards: compact 1-line layout ── */
-.card-holiday {
-  background: var(--card);
-  border-radius: 10px;
-  padding: 10px 14px;
-  margin-bottom: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  border-left: 4px solid var(--holiday-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  transition: box-shadow 0.2s ease;
-  cursor: default;
-}
-
-.card-holiday:hover {
-  box-shadow: var(--shadow);
-}
-
-.holiday-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  min-width: 0;
-}
-
-.holiday-name {
-  font-weight: 600;
-  color: var(--holiday);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.holiday-date {
-  color: var(--muted);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-/* ── Shared badge styles ── */
-.badge {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 20px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.badge.trip {
-  background: var(--trip-light);
-  color: var(--trip);
-}
-
-.badge.holiday {
-  background: var(--holiday-light);
-  color: var(--holiday);
-  font-size: 11px;
-  padding: 2px 8px;
-}
-
-.badge.ongoing {
-  background: var(--ongoing-light);
-  color: var(--ongoing);
-}
-
-.empty {
-  text-align: center;
-  color: var(--muted);
-  margin-top: 60px;
-  font-size: 15px;
-}
-
-.loading {
-  text-align: center;
-  margin-top: 80px;
-  color: var(--muted);
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--divider);
-  border-top-color: var(--trip);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 14px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.warn-msg {
-  text-align: center;
-  color: #92400e;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: var(--radius);
-  padding: 10px 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-
-.warn-msg button {
-  margin-left: 8px;
-  padding: 3px 12px;
-  border: 1px solid #d97706;
-  background: #fff;
-  color: #d97706;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.warn-msg button:hover {
-  background: #fffbeb;
-}
-
-.error-msg {
-  text-align: center;
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  margin-top: 40px;
-  font-size: 14px;
-}
-
-.error-msg button {
-  margin-top: 10px;
-  padding: 6px 16px;
-  border: 1px solid #dc2626;
-  background: #fff;
-  color: #dc2626;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.error-msg button:hover {
-  background: #fef2f2;
-}
-
-@media (max-width: 480px) {
-  .container {
-    padding: 20px 12px 50px;
-  }
-  header h1 {
-    font-size: 22px;
-  }
-  .card-trip {
-    padding: 14px 14px;
-  }
-  .trip-title {
-    font-size: 15px;
-  }
-}
+.loading { text-align:center; margin-top:40px; }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <header>
-    <h1>Lord Lowry Planner</h1>
-    <p id="subtitle"></p>
-  </header>
-
-  <div class="legend">
-    <div class="legend-item">
-      <span class="legend-dot trip"></span> Trips
-    </div>
-    <div class="legend-item">
-      <span class="legend-dot ongoing"></span> Ongoing
-    </div>
-    <div class="legend-item">
-      <span class="legend-dot holiday"></span> Bank Holidays
-    </div>
-  </div>
-
-  <div id="events">
-    <div class="loading">
-      <div class="spinner"></div>
-      Loading your schedule...
-    </div>
-  </div>
+  <div id="hero"></div>
+  <div id="content" class="loading">Loading...</div>
 </div>
 
 <script>
-const ICS_URL = "https://calendar.google.com/calendar/ical/reggmyster%40gmail.com/private-98c5d3a6db4b47b17c7a083cc465a659/basic.ics";
-const CACHE_KEY = "travelDashboardData";
-const CACHE_TIME = 24 * 60 * 60 * 1000;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+
+const CALENDAR_ID = "YOUR_CALENDAR_ID";
+const API_KEY = "YOUR_API_KEY";
+
+const today = new Date();
+today.setHours(0,0,0,0);
 
 const countryMap = {
-  "ireland": "\u{1F1EE}\u{1F1EA}",
-  "dublin": "\u{1F1EE}\u{1F1EA}",
-  "cork": "\u{1F1EE}\u{1F1EA}",
-  "galway": "\u{1F1EE}\u{1F1EA}",
-  "westport": "\u{1F1EE}\u{1F1EA}",
-  "limerick": "\u{1F1EE}\u{1F1EA}",
-  "killarney": "\u{1F1EE}\u{1F1EA}",
-  "belfast": "\u{1F1EE}\u{1F1EA}",
-  "poland": "\u{1F1F5}\u{1F1F1}",
-  "krakow": "\u{1F1F5}\u{1F1F1}",
-  "spain": "\u{1F1EA}\u{1F1F8}",
-  "los alc\u00E1zares": "\u{1F1EA}\u{1F1F8}",
-  "madrid": "\u{1F1EA}\u{1F1F8}",
-  "barcelona": "\u{1F1EA}\u{1F1F8}",
-  "uk": "\u{1F1EC}\u{1F1E7}",
-  "london": "\u{1F1EC}\u{1F1E7}",
-  "france": "\u{1F1EB}\u{1F1F7}",
-  "italy": "\u{1F1EE}\u{1F1F9}",
-  "germany": "\u{1F1E9}\u{1F1EA}",
-  "vilamoura": "\u{1F1F5}\u{1F1F9}",
-  "portugal": "\u{1F1F5}\u{1F1F9}",
-  "malaga": "\u{1F1EA}\u{1F1F8}",
-  "usa": "\u{1F1FA}\u{1F1F8}",
-  "new york": "\u{1F1FA}\u{1F1F8}"
+  ireland:"🇮🇪",
+  spain:"🇪🇸",
+  portugal:"🇵🇹",
+  france:"🇫🇷",
+  italy:"🇮🇹",
+  germany:"🇩🇪",
+  poland:"🇵🇱",
+  uk:"🇬🇧",
+  london:"🇬🇧",
+  usa:"🇺🇸",
+  "new york":"🇺🇸"
 };
 
-const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
-];
-
-async function fetchWithCache() {
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
-    try {
-      const parsed = JSON.parse(cached);
-      if (Date.now() - parsed.timestamp < CACHE_TIME) {
-        var d = parsed.data;
-        if (typeof d.tripsLoaded === "undefined") d.tripsLoaded = d.trips.length > 0;
-        return d;
-      }
-    } catch (e) {
-      localStorage.removeItem(CACHE_KEY);
-    }
+function getFlag(title){
+  const t = title.toLowerCase();
+  for (const key in countryMap){
+    if(t.includes(key)) return countryMap[key];
   }
+  return "🌍";
+}
 
-  const data = await fetchFreshData();
-  // Only cache if we got trips — don't cache partial data
-  if (data.tripsLoaded) {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({
-        timestamp: Date.now(),
-        data
-      }));
-    } catch (e) {
-      // localStorage may be full or unavailable
+function formatDate(d){
+  return d.toLocaleDateString("en-IE",{day:"numeric",month:"short"});
+}
+
+function daysUntil(d){
+  return Math.floor((d - today)/(1000*60*60*24));
+}
+
+function isOngoing(s,e){
+  return today>=s && today<=e;
+}
+
+async function fetchCalendar(){
+  const timeMin = today.toISOString();
+  const timeMax = new Date(today.getFullYear()+1, today.getMonth(), today.getDate()).toISOString();
+
+  const url =
+    `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events`+
+    `?key=${API_KEY}`+
+    `&timeMin=${timeMin}`+
+    `&timeMax=${timeMax}`+
+    `&singleEvents=true&orderBy=startTime`;
+
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("Calendar failed");
+
+  const data = await res.json();
+  return data.items;
+}
+
+async function fetchHolidays(){
+  const year = today.getFullYear();
+  const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/IE`);
+  return res.json();
+}
+
+async function init(){
+  const container = document.getElementById("content");
+
+  try{
+    const [events, holidays] = await Promise.all([
+      fetchCalendar(),
+      fetchHolidays()
+    ]);
+
+    let items=[];
+
+    events.forEach(ev=>{
+      const title = ev.summary || "";
+      const lower = title.toLowerCase();
+
+      if(!lower.includes("trip") && !lower.includes("event")) return;
+
+      const start = new Date(ev.start.date || ev.start.dateTime);
+      const end = new Date(ev.end.date || ev.end.dateTime || start);
+      end.setDate(end.getDate()-1);
+
+      items.push({title,start,end,type:lower.includes("trip")?"trip":"event"});
+    });
+
+    holidays.forEach(h=>{
+      const date = new Date(h.date);
+      if(date>=today)
+        items.push({title:"🇮🇪 "+h.localName,start:date,end:date,type:"holiday"});
+    });
+
+    items.sort((a,b)=>a.start-b.start);
+
+    const nextTrip = items.find(e=>e.type==="trip" && e.start>=today);
+
+    if(nextTrip){
+      document.getElementById("hero").innerHTML=`
+        <div class="hero">
+          <h2>${getFlag(nextTrip.title)} ${nextTrip.title}</h2>
+          <small>${formatDate(nextTrip.start)} – ${formatDate(nextTrip.end)}
+          • ${daysUntil(nextTrip.start)} days</small>
+        </div>`;
     }
+
+    container.innerHTML="";
+    let currentMonth="";
+
+    items.forEach(e=>{
+      const month=e.start.toLocaleString("en-IE",{month:"long",year:"numeric"});
+      if(month!==currentMonth){
+        currentMonth=month;
+        container.innerHTML+=`<div class="month">${month}</div>`;
+      }
+
+      if(e.type==="holiday"){
+        container.innerHTML+=`
+          <div class="holiday">
+            <span>${e.title}</span>
+            <span>${formatDate(e.start)}</span>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML+=`
+        <div class="card ${e.type} ${isOngoing(e.start,e.end)?"ongoing":""}">
+          <div class="title">
+            ${getFlag(e.title)} ${e.title}
+            <span>${daysUntil(e.start)}d</span>
+          </div>
+          <div class="meta">
+            ${formatDate(e.start)} – ${formatDate(e.end)}
+          </div>
+        </div>`;
+    });
+
+  }catch(err){
+    container.innerHTML="Unable to load planner.";
   }
-
-  return data;
 }
 
-async function fetchViaProxy(url) {
-  var proxies = [
-    { name: "allorigins-json", build: function(u) { return "https://api.allorigins.win/get?url=" + encodeURIComponent(u); }, json: true },
-    { name: "allorigins-raw",  build: function(u) { return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); }, json: false },
-    { name: "corsproxy",       build: function(u) { return "https://corsproxy.io/?" + encodeURIComponent(u); }, json: false },
-    { name: "cors-anywhere",   build: function(u) { return "https://cors-proxy.htmldriven.com/?url=" + encodeURIComponent(u); }, json: true, bodyKey: "body" }
-  ];
-
-  for (var i = 0; i < proxies.length; i++) {
-    var p = proxies[i];
-    try {
-      var controller = new AbortController();
-      var timeoutId = setTimeout(function() { controller.abort(); }, 12000);
-      var res = await fetch(p.build(url), { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (!res.ok) continue;
-      var text;
-      if (p.json) {
-        var data = await res.json();
-        text = p.bodyKey ? data[p.bodyKey] : data.contents;
-      } else {
-        text = await res.text();
-      }
-      // Validate that we got actual ICS data, not an error page
-      if (text && text.indexOf("BEGIN:VCALENDAR") !== -1) {
-        return text;
-      }
-      console.warn("Proxy " + p.name + " returned non-ICS data");
-    } catch (e) {
-      console.warn("Proxy " + p.name + " failed:", e.message);
-    }
-  }
-  return null;
-}
-
-async function fetchFreshData() {
-  // Fetch trips and holidays independently so one failing doesn't block the other
-  var tripsPromise = fetchViaProxy(ICS_URL).then(function(calText) {
-    if (calText) return parseTrips(calText);
-    console.warn("Calendar data unavailable - no trips to show");
-    return [];
-  }).catch(function(e) {
-    console.warn("Trip fetch failed:", e.message);
-    return [];
-  });
-
-  var holidaysPromise = (async function() {
-    var year = new Date().getFullYear();
-    var years = [year, year + 1];
-    var holidays = [];
-    for (var i = 0; i < years.length; i++) {
-      try {
-        var holidayRes = await fetch(
-          "https://date.nager.at/api/v3/PublicHolidays/" + years[i] + "/IE"
-        );
-        if (holidayRes.ok) {
-          var data = await holidayRes.json();
-          holidays = holidays.concat(data);
-        }
-      } catch (e) {
-        console.warn("Holiday fetch failed for " + years[i] + ":", e.message);
-      }
-    }
-    return holidays;
-  })();
-
-  var results = await Promise.all([tripsPromise, holidaysPromise]);
-  return { trips: results[0], holidays: results[1], tripsLoaded: results[0].length > 0 };
-}
-
-function parseTrips(data) {
-  const events = [];
-  const raw = data.split("BEGIN:VEVENT");
-
-  raw.forEach(function(e) {
-    const summary = e.match(/SUMMARY:(.*)/);
-    const start = e.match(/DTSTART[^:]*:(.*)/);
-    const end = e.match(/DTEND[^:]*:(.*)/);
-
-    if (summary && start && summary[1].toLowerCase().includes("trip")) {
-      var endDate = null;
-      if (end) {
-        // ICS DTEND for all-day events is exclusive, subtract 1 day
-        endDate = parseDate(end[1].trim());
-        endDate.setDate(endDate.getDate() - 1);
-      }
-      events.push({
-        title: summary[1].trim(),
-        start: parseDate(start[1].trim()),
-        end: endDate
-      });
-    }
-  });
-
-  return events;
-}
-
-function parseDate(s) {
-  s = s.replace(/\r/g, "");
-  return new Date(
-    parseInt(s.substring(0, 4)),
-    parseInt(s.substring(4, 6)) - 1,
-    parseInt(s.substring(6, 8))
-  );
-}
-
-function daysBetween(a, b) {
-  var msPerDay = 1000 * 60 * 60 * 24;
-  var aDay = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  var bDay = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  return Math.round((bDay - aDay) / msPerDay);
-}
-
-function getFlag(title) {
-  var t = title.toLowerCase();
-  for (var key in countryMap) {
-    if (t.includes(key)) return countryMap[key];
-  }
-  return "\u{1F30D}";
-}
-
-function isIreland(title) {
-  var t = title.toLowerCase();
-  return t.includes("ireland") ||
-         t.includes("dublin") ||
-         t.includes("cork") ||
-         t.includes("galway") ||
-         t.includes("westport") ||
-         t.includes("limerick") ||
-         t.includes("killarney") ||
-         t.includes("belfast");
-}
-
-function overlaps(trip, holidayDate) {
-  var end = trip.end || trip.start;
-  return holidayDate >= trip.start && holidayDate <= end;
-}
-
-function formatDate(date) {
-  var day = date.getDate();
-  var month = date.toLocaleString("en-IE", { month: "short" });
-  return day + " " + month;
-}
-
-function isOngoing(event, now) {
-  var end = event.end || event.start;
-  var startDay = new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate());
-  var endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return today >= startDay && today <= endDay;
-}
-
-function render(data) {
-  var container = document.getElementById("events");
-  container.innerHTML = "";
-
-  // Show warning if trips couldn't be loaded
-  if (!data.tripsLoaded && data.trips.length === 0) {
-    var warn = document.createElement("div");
-    warn.className = "warn-msg";
-    warn.innerHTML = 'Trips could not be loaded. <button onclick="localStorage.removeItem(\'' + CACHE_KEY + '\'); location.reload();">Retry</button>';
-    container.appendChild(warn);
-  }
-
-  var now = new Date();
-  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  var futureLimit = new Date();
-  futureLimit.setMonth(now.getMonth() + 12);
-
-  var combined = [];
-
-  data.trips.forEach(function(t) {
-    var end = t.end || t.start;
-    var endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-    // Show trips that haven't ended yet and are within 12 months
-    if (endDay >= today && t.start <= futureLimit) {
-      combined.push({ type: "trip", title: t.title, start: t.start, end: t.end });
-    }
-  });
-
-  data.holidays.forEach(function(h) {
-    var date = new Date(h.date + "T00:00:00");
-    if (date >= today && date <= futureLimit) {
-      var conflict = data.trips.some(function(t) { return overlaps(t, date); });
-      if (!conflict) {
-        combined.push({
-          type: "holiday",
-          title: h.name,
-          start: date,
-          end: null
-        });
-      }
-    }
-  });
-
-  combined.sort(function(a, b) { return a.start - b.start; });
-
-  // Update subtitle
-  var tripCount = combined.filter(function(e) { return e.type === "trip"; }).length;
-  var holidayCount = combined.filter(function(e) { return e.type === "holiday"; }).length;
-  document.getElementById("subtitle").textContent =
-    tripCount + " upcoming trip" + (tripCount !== 1 ? "s" : "") +
-    " \u00B7 " +
-    holidayCount + " bank holiday" + (holidayCount !== 1 ? "s" : "");
-
-  if (combined.length === 0) {
-    container.innerHTML =
-      "<div class='empty'>No upcoming trips or holidays found.</div>";
-    return;
-  }
-
-  var currentMonth = "";
-
-  combined.forEach(function(e) {
-    var monthKey = MONTHS[e.start.getMonth()] + " " + e.start.getFullYear();
-
-    if (monthKey !== currentMonth) {
-      currentMonth = monthKey;
-      var header = document.createElement("div");
-      header.className = "month-header";
-      header.textContent = monthKey;
-      container.appendChild(header);
-    }
-
-    var ongoing = isOngoing(e, now);
-    var days = daysBetween(today, e.start);
-
-    if (e.type === "trip") {
-      // ── TRIP: 2-line card ──
-      var card = document.createElement("div");
-      card.className = "card-trip" + (ongoing ? " type-ongoing" : "");
-      card.setAttribute("role", "article");
-      card.setAttribute("aria-label", e.title);
-
-      // Row 1: flag + name + badge
-      var topRow = document.createElement("div");
-      topRow.className = "trip-row-top";
-
-      var title = document.createElement("span");
-      title.className = "trip-title" + (ongoing ? " ongoing" : "");
-      var flag = getFlag(e.title);
-      var plane = isIreland(e.title) ? "" : " \u2708\uFE0F";
-      title.textContent = flag + " " +
-        e.title.replace(/trip/i, "").trim() + plane;
-
-      var badge = document.createElement("span");
-      badge.className = "badge " + (ongoing ? "ongoing" : "trip");
-      if (ongoing) {
-        badge.textContent = "Now";
-      } else if (days === 0) {
-        badge.textContent = "Today";
-      } else if (days === 1) {
-        badge.textContent = "Tomorrow";
-      } else {
-        badge.textContent = days + " days";
-      }
-
-      topRow.appendChild(title);
-      topRow.appendChild(badge);
-
-      // Row 2: dates + duration
-      var bottomRow = document.createElement("div");
-      bottomRow.className = "trip-row-bottom";
-
-      var end = e.end || e.start;
-      var dateSpan = document.createElement("span");
-      if (e.end) {
-        dateSpan.textContent = formatDate(e.start) + " \u2013 " + formatDate(end);
-      } else {
-        dateSpan.textContent = formatDate(e.start);
-      }
-      bottomRow.appendChild(dateSpan);
-
-      if (e.end) {
-        var sep = document.createElement("span");
-        sep.className = "sep";
-        sep.textContent = "\u00B7";
-        bottomRow.appendChild(sep);
-
-        var duration = document.createElement("span");
-        var numDays = daysBetween(e.start, end) + 1; // inclusive of start and end
-        duration.textContent = numDays + " day" + (numDays !== 1 ? "s" : "");
-        bottomRow.appendChild(duration);
-      }
-
-      card.appendChild(topRow);
-      card.appendChild(bottomRow);
-      container.appendChild(card);
-
-    } else {
-      // ── HOLIDAY: compact 1-line card ──
-      var hCard = document.createElement("div");
-      hCard.className = "card-holiday";
-      hCard.setAttribute("role", "article");
-      hCard.setAttribute("aria-label", e.title + " - Bank Holiday");
-
-      var left = document.createElement("div");
-      left.className = "holiday-left";
-
-      var hName = document.createElement("span");
-      hName.className = "holiday-name";
-      hName.textContent = "\u{1F1EE}\u{1F1EA} " + e.title;
-
-      var hDate = document.createElement("span");
-      hDate.className = "holiday-date";
-      hDate.textContent = formatDate(e.start);
-
-      left.appendChild(hName);
-      left.appendChild(hDate);
-
-      var hBadge = document.createElement("span");
-      hBadge.className = "badge holiday";
-      if (days === 0) {
-        hBadge.textContent = "Today";
-      } else if (days === 1) {
-        hBadge.textContent = "Tomorrow";
-      } else {
-        hBadge.textContent = days + "d";
-      }
-
-      hCard.appendChild(left);
-      hCard.appendChild(hBadge);
-      container.appendChild(hCard);
-    }
-  });
-}
-
-function showError(message) {
-  var container = document.getElementById("events");
-  container.innerHTML =
-    '<div class="error-msg">' +
-    '<div>' + message + '</div>' +
-    '<button onclick="location.reload()">Retry</button>' +
-    '</div>';
-}
-
-fetchWithCache()
-  .then(render)
-  .catch(function(err) {
-    console.error("Dashboard error:", err);
-    showError("Unable to load schedule. Please check your connection and try again.");
-  });
+init();
 </script>
-
 </body>
 </html>
