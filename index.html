@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Life Dashboard</title>
+<title>Lord Lowry Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -10,7 +10,7 @@
   --bg: #f3f4f6;
   --card: #ffffff;
   --trip: #1d4ed8;
-  --event: #7c3aed;
+  --event: #15803d;
   --holiday: #b45309;
   --text: #111827;
   --muted: #6b7280;
@@ -27,23 +27,31 @@ body {
 
 h1 {
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 25px;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.8fr 0.8fr;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0 6px 8px 6px;
 }
 
 .card {
   background: var(--card);
   border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
   box-shadow: var(--shadow);
 }
 
 .row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.8fr 0.8fr;
   align-items: center;
-  gap: 6px;
   font-size: 14px;
 }
 
@@ -51,47 +59,43 @@ h1 {
   font-weight: 600;
 }
 
-.trip { color: var(--trip); }
-.event { color: var(--event); }
-.holiday { color: var(--holiday); }
+.trip {
+  color: var(--trip);
+  font-size: 15px;
+}
 
-.meta { color: var(--muted); }
-.badge { font-weight: 600; }
+.event {
+  color: var(--event);
+}
 
-.empty {
-  text-align: center;
-  color: var(--muted);
-  margin-top: 40px;
+.holiday {
+  color: var(--holiday);
+}
+
+.meta {
+  color: var(--text);
+}
+
+.countdown {
+  font-weight: 600;
 }
 </style>
 </head>
 <body>
 
-<h1>Trips, Events & Irish Bank Holidays</h1>
+<h1>Lord Lowry Schedule</h1>
+
+<div class="table-header">
+  <div>Item</div>
+  <div>Date</div>
+  <div>Countdown</div>
+  <div>Duration</div>
+</div>
+
 <div id="events"></div>
 
 <script>
 const ICS_URL = "https://calendar.google.com/calendar/ical/reggmyster%40gmail.com/private-98c5d3a6db4b47b17c7a083cc465a659/basic.ics";
-
-const countryMap = {
-  "ireland": "🇮🇪",
-  "dublin": "🇮🇪",
-  "cork": "🇮🇪",
-  "galway": "🇮🇪",
-  "poland": "🇵🇱",
-  "krakow": "🇵🇱",
-  "spain": "🇪🇸",
-  "madrid": "🇪🇸",
-  "barcelona": "🇪🇸",
-  "uk": "🇬🇧",
-  "london": "🇬🇧",
-  "france": "🇫🇷",
-  "italy": "🇮🇹",
-  "germany": "🇩🇪",
-  "portugal": "🇵🇹",
-  "usa": "🇺🇸",
-  "new york": "🇺🇸"
-};
 
 function unfoldICS(text) {
   return text.replace(/\r?\n[ \t]/g, "");
@@ -107,7 +111,7 @@ function parseDate(value) {
 }
 
 function parseCalendar(icsText) {
-  const events = [];
+  const items = [];
   const data = unfoldICS(icsText);
   const blocks = data.split("BEGIN:VEVENT");
 
@@ -130,7 +134,7 @@ function parseCalendar(icsText) {
     const startDate = parseDate(startMatch[1]);
     const endDate = endMatch ? parseDate(endMatch[1]) : startDate;
 
-    events.push({
+    items.push({
       type,
       title: rawTitle.replace(/trip|event/i,"").trim(),
       start: startDate,
@@ -138,27 +142,11 @@ function parseCalendar(icsText) {
     });
   });
 
-  return events;
+  return items;
 }
 
 function daysBetween(a,b) {
   return Math.ceil((b - a)/(1000*60*60*24));
-}
-
-function getFlag(title) {
-  const lower = title.toLowerCase();
-  for (let key in countryMap) {
-    if (lower.includes(key)) return countryMap[key];
-  }
-  return "🌍";
-}
-
-function isIreland(title) {
-  const lower = title.toLowerCase();
-  return lower.includes("ireland") ||
-         lower.includes("dublin") ||
-         lower.includes("cork") ||
-         lower.includes("galway");
 }
 
 function overlaps(trip, holidayDate) {
@@ -187,7 +175,6 @@ function render(data) {
   futureLimit.setMonth(now.getMonth() + 12);
 
   let combined = [];
-
   const tripsOnly = data.calendarItems.filter(e => e.type==="trip");
 
   data.calendarItems.forEach(e => {
@@ -213,11 +200,6 @@ function render(data) {
 
   combined.sort((a,b)=>a.start - b.start);
 
-  if (combined.length === 0) {
-    container.innerHTML = "<div class='empty'>No upcoming items</div>";
-    return;
-  }
-
   combined.forEach(e=>{
     const card = document.createElement("div");
     card.className="card";
@@ -225,24 +207,18 @@ function render(data) {
     const row = document.createElement("div");
     row.className="row";
 
-    const title = document.createElement("span");
+    const title = document.createElement("div");
     title.className="title "+e.type;
 
     if (e.type==="trip") {
-      const flag = getFlag(e.title);
-      const plane = isIreland(e.title) ? "" : " ✈️";
-      title.textContent = flag+" "+e.title+plane;
-    } 
-    else if (e.type==="event") {
-      title.textContent = "📅 "+e.title;
-    }
-    else {
-      title.textContent = "🇮🇪 "+e.title+" (Bank Holiday)";
+      title.textContent = "✈️ " + e.title;
+    } else if (e.type==="event") {
+      title.textContent = "🎂 " + e.title;
+    } else {
+      title.textContent = "🇮🇪 " + e.title;
     }
 
-    const date = document.createElement("span");
-    date.className="meta";
-
+    const date = document.createElement("div");
     if (e.start.getTime() !== e.end.getTime()) {
       date.textContent =
         e.start.toDateString().slice(4,10) +
@@ -253,24 +229,23 @@ function render(data) {
         e.start.toDateString().slice(4,10);
     }
 
-    const countdown = document.createElement("span");
-    countdown.className="badge "+e.type;
+    const countdown = document.createElement("div");
+    countdown.className="countdown";
     countdown.textContent =
       daysBetween(now,e.start)+"d";
 
-    row.appendChild(title);
-    row.appendChild(document.createTextNode(" | "));
-    row.appendChild(date);
-    row.appendChild(document.createTextNode(" | "));
-    row.appendChild(countdown);
-
+    const duration = document.createElement("div");
     if (e.type==="trip") {
-      const duration = document.createElement("span");
-      duration.className="meta";
       duration.textContent =
-        " | "+(daysBetween(e.start,e.end)+1)+"d";
-      row.appendChild(duration);
+        (daysBetween(e.start,e.end)+1)+"d";
+    } else {
+      duration.textContent = "-";
     }
+
+    row.appendChild(title);
+    row.appendChild(date);
+    row.appendChild(countdown);
+    row.appendChild(duration);
 
     card.appendChild(row);
     container.appendChild(card);
