@@ -14,260 +14,297 @@
   --holiday: #b45309;
   --text: #111827;
   --muted: #6b7280;
-  --shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: var(--bg);
-  padding: 20px 14px 60px;
-  color: var(--text);
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:linear-gradient(135deg,#eef2ff,#f3f4f6);
+  padding:30px 14px 60px;
+  color:var(--text);
 }
 
-h1 {
-  text-align: center;
-  font-weight: 700;
-  margin-bottom: 25px;
+/* ===== CONTAINER ===== */
+
+.wrapper{
+  max-width:900px;
+  margin:auto;
+  background:var(--card);
+  border-radius:18px;
+  padding:30px 25px;
+  box-shadow:0 20px 50px rgba(0,0,0,0.08);
+  animation:fadeIn 0.6s ease;
 }
 
-.table-header {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 0.8fr 0.8fr;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  padding: 0 6px 8px 6px;
+/* ===== HEADER ===== */
+
+.header{
+  text-align:center;
+  margin-bottom:30px;
 }
 
-.card {
-  background: var(--card);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 8px;
-  box-shadow: var(--shadow);
+.header h1{
+  margin:0;
+  font-size:28px;
+  letter-spacing:1px;
+  font-weight:700;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 0.8fr 0.8fr;
-  align-items: center;
-  font-size: 14px;
+.header p{
+  margin-top:6px;
+  font-size:13px;
+  color:var(--muted);
 }
 
-.title {
-  font-weight: 600;
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(8px);}
+  to{opacity:1; transform:translateY(0);}
 }
 
-.trip {
-  color: var(--trip);
-  font-size: 15px;
+/* ===== TABLE ===== */
+
+.table-header{
+  display:grid;
+  grid-template-columns:2fr 1.2fr 0.8fr 0.8fr;
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+  padding-bottom:8px;
+  border-bottom:1px solid #e5e7eb;
 }
 
-.event {
-  color: var(--event);
+.card{
+  padding:14px 6px;
+  border-bottom:1px solid #f1f5f9;
+  animation:fadeIn 0.4s ease;
 }
 
-.holiday {
-  color: var(--holiday);
+.row{
+  display:grid;
+  grid-template-columns:2fr 1.2fr 0.8fr 0.8fr;
+  align-items:center;
+  font-size:14px;
 }
 
-.countdown {
-  font-weight: 600;
+.title{
+  font-weight:600;
 }
+
+.trip{
+  color:var(--trip);
+  font-size:16px;
+}
+
+.event{
+  color:var(--event);
+}
+
+.holiday{
+  color:var(--holiday);
+}
+
+.countdown{
+  font-weight:600;
+}
+
 </style>
 </head>
 <body>
 
-<h1>Lord Lowry Schedule</h1>
+<div class="wrapper">
 
-<div class="table-header">
-  <div>Item</div>
-  <div>Date</div>
-  <div>Countdown</div>
-  <div>Duration</div>
+  <div class="header">
+    <h1>Lord Lowry Schedule</h1>
+    <p>Rolling 12 Month Executive View</p>
+  </div>
+
+  <div class="table-header">
+    <div>Item</div>
+    <div>Date</div>
+    <div>Countdown</div>
+    <div>Duration</div>
+  </div>
+
+  <div id="events"></div>
+
 </div>
 
-<div id="events"></div>
-
 <script>
-const ICS_URL = "https://calendar.google.com/calendar/ical/reggmyster%40gmail.com/private-98c5d3a6db4b47b17c7a083cc465a659/basic.ics";
+const ICS_URL = "YOUR_ICS_LINK_HERE";
 
-function unfoldICS(text) {
-  return text.replace(/\r?\n[ \t]/g, "");
+/* ========= HELPERS ========= */
+
+function unfoldICS(text){
+  return text.replace(/\r?\n[ \t]/g,"");
 }
 
-function parseDate(value) {
-  const datePart = value.substring(0,8);
+function parseDate(value){
+  const d=value.substring(0,8);
   return new Date(
-    parseInt(datePart.substring(0,4)),
-    parseInt(datePart.substring(4,6)) - 1,
-    parseInt(datePart.substring(6,8))
+    parseInt(d.substring(0,4)),
+    parseInt(d.substring(4,6))-1,
+    parseInt(d.substring(6,8))
   );
 }
 
-function adjustEndDate(start, endRaw) {
-  if (!endRaw) return start;
-  const end = parseDate(endRaw);
-  if (end > start) end.setDate(end.getDate() - 1);
+function adjustEndDate(start,endRaw){
+  if(!endRaw) return start;
+  const end=parseDate(endRaw);
+  if(end>start) end.setDate(end.getDate()-1);
   return end;
 }
 
-function getNextYearlyOccurrence(originalDate) {
-  const now = new Date();
-  let next = new Date(now.getFullYear(), originalDate.getMonth(), originalDate.getDate());
-
-  if (next < now) {
-    next = new Date(now.getFullYear() + 1, originalDate.getMonth(), originalDate.getDate());
+function getNextYearlyOccurrence(original){
+  const now=new Date();
+  let next=new Date(now.getFullYear(),original.getMonth(),original.getDate());
+  if(next<now){
+    next=new Date(now.getFullYear()+1,original.getMonth(),original.getDate());
   }
-
   return next;
 }
 
-function parseCalendar(icsText) {
-  const items = [];
-  const data = unfoldICS(icsText);
-  const blocks = data.split("BEGIN:VEVENT");
+function daysBetween(a,b){
+  return Math.ceil((b-a)/(1000*60*60*24));
+}
 
-  blocks.forEach(block => {
-    const summaryMatch = block.match(/SUMMARY:(.+)/);
-    const startMatch = block.match(/DTSTART[^:]*:(.+)/);
-    const endMatch = block.match(/DTEND[^:]*:(.+)/);
-    const rruleMatch = block.match(/RRULE:(.+)/);
+function overlaps(trip,date){
+  return date>=trip.start && date<=trip.end;
+}
 
-    if (!summaryMatch || !startMatch) return;
+/* ========= PARSE ========= */
 
-    const rawTitle = summaryMatch[1].trim();
-    const lower = rawTitle.toLowerCase();
+function parseCalendar(text){
+  const items=[];
+  const data=unfoldICS(text);
+  const blocks=data.split("BEGIN:VEVENT");
 
-    let type = null;
-    if (lower.includes("trip")) type = "trip";
-    if (lower.includes("event")) type = "event";
+  blocks.forEach(block=>{
+    const summary=block.match(/SUMMARY:(.+)/);
+    const startMatch=block.match(/DTSTART[^:]*:(.+)/);
+    const endMatch=block.match(/DTEND[^:]*:(.+)/);
+    const rruleMatch=block.match(/RRULE:(.+)/);
 
-    if (!type) return;
+    if(!summary||!startMatch) return;
 
-    const originalStart = parseDate(startMatch[1]);
-    let startDate = originalStart;
+    const rawTitle=summary[1].trim();
+    const lower=rawTitle.toLowerCase();
+
+    let type=null;
+    if(lower.includes("trip")) type="trip";
+    if(lower.includes("event")) type="event";
+    if(!type) return;
+
+    const originalStart=parseDate(startMatch[1]);
+    let startDate=originalStart;
     let endDate;
 
-    // Handle yearly recurring events
-    if (rruleMatch && rruleMatch[1].includes("FREQ=YEARLY")) {
-      startDate = getNextYearlyOccurrence(originalStart);
-      endDate = startDate;
-    } else {
-      endDate = adjustEndDate(startDate, endMatch ? endMatch[1] : null);
+    if(rruleMatch && rruleMatch[1].includes("FREQ=YEARLY")){
+      startDate=getNextYearlyOccurrence(originalStart);
+      endDate=startDate;
+    }else{
+      endDate=adjustEndDate(startDate,endMatch?endMatch[1]:null);
     }
 
     items.push({
       type,
-      title: rawTitle.replace(/trip|event/i,"").trim(),
-      start: startDate,
-      end: endDate
+      title:rawTitle.replace(/trip|event/i,"").trim(),
+      start:startDate,
+      end:endDate
     });
   });
 
   return items;
 }
 
-function daysBetween(a,b) {
-  return Math.ceil((b - a)/(1000*60*60*24));
+/* ========= FETCH ========= */
+
+async function fetchData(){
+  const proxy="https://api.allorigins.win/raw?url=";
+  const calRes=await fetch(proxy+encodeURIComponent(ICS_URL));
+  const calText=await calRes.text();
+  const calendarItems=parseCalendar(calText);
+
+  const now=new Date();
+  const year=now.getFullYear();
+  const nextYear=year+1;
+
+  const holidaysThisYear=await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/IE`).then(r=>r.json());
+  const holidaysNextYear=await fetch(`https://date.nager.at/api/v3/PublicHolidays/${nextYear}/IE`).then(r=>r.json());
+
+  return {calendarItems, holidays:[...holidaysThisYear,...holidaysNextYear]};
 }
 
-function overlaps(trip, holidayDate) {
-  return holidayDate >= trip.start && holidayDate <= trip.end;
-}
+/* ========= RENDER ========= */
 
-async function fetchData() {
-  const proxy = "https://api.allorigins.win/raw?url=";
-  const calRes = await fetch(proxy + encodeURIComponent(ICS_URL));
-  const calText = await calRes.text();
-  const calendarItems = parseCalendar(calText);
+function render(data){
+  const container=document.getElementById("events");
+  container.innerHTML="";
 
-  const year = new Date().getFullYear();
-  const holidayRes = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/IE`);
-  const holidays = await holidayRes.json();
+  const now=new Date();
+  const rollingLimit=new Date();
+  rollingLimit.setFullYear(now.getFullYear()+1);
 
-  return { calendarItems, holidays };
-}
+  let combined=[];
+  const tripsOnly=data.calendarItems.filter(e=>e.type==="trip");
 
-function render(data) {
-  const container = document.getElementById("events");
-  container.innerHTML = "";
-
-  const now = new Date();
-  const futureLimit = new Date();
-  futureLimit.setMonth(now.getMonth() + 12);
-
-  let combined = [];
-  const tripsOnly = data.calendarItems.filter(e => e.type==="trip");
-
-  data.calendarItems.forEach(e => {
-    if (e.start >= now && e.start <= futureLimit) {
+  data.calendarItems.forEach(e=>{
+    if(e.start>=now && e.start<=rollingLimit){
       combined.push(e);
     }
   });
 
-  data.holidays.forEach(h => {
-    const date = new Date(h.date);
-    if (date >= now && date <= futureLimit) {
-      const conflict = tripsOnly.some(t => overlaps(t,date));
-      if (!conflict) {
+  data.holidays.forEach(h=>{
+    const date=new Date(h.date);
+    if(date>=now && date<=rollingLimit){
+      const conflict=tripsOnly.some(t=>overlaps(t,date));
+      if(!conflict){
         combined.push({
           type:"holiday",
-          title: h.name,
-          start: date,
-          end: date
+          title:h.name,
+          start:date,
+          end:date
         });
       }
     }
   });
 
-  combined.sort((a,b)=>a.start - b.start);
+  combined.sort((a,b)=>a.start-b.start);
 
   combined.forEach(e=>{
-    const card = document.createElement("div");
+    const card=document.createElement("div");
     card.className="card";
 
-    const row = document.createElement("div");
+    const row=document.createElement("div");
     row.className="row";
 
-    const title = document.createElement("div");
+    const title=document.createElement("div");
     title.className="title "+e.type;
 
-    if (e.type==="trip") title.textContent = "✈️ " + e.title;
-    else if (e.type==="event") title.textContent = "🎂 " + e.title;
-    else title.textContent = "🇮🇪 " + e.title;
+    if(e.type==="trip") title.textContent="✈️ "+e.title;
+    else if(e.type==="event") title.textContent="🎂 "+e.title;
+    else title.textContent="🇮🇪 "+e.title;
 
-    const date = document.createElement("div");
-
-    if (e.start.getTime() !== e.end.getTime()) {
-      date.textContent =
-        e.start.toDateString().slice(4,10) +
-        " – " +
+    const date=document.createElement("div");
+    if(e.start.getTime()!==e.end.getTime()){
+      date.textContent=
+        e.start.toDateString().slice(4,10)+" – "+
         e.end.toDateString().slice(4,10);
-    } else {
-      date.textContent =
-        e.start.toDateString().slice(4,10);
+    }else{
+      date.textContent=e.start.toDateString().slice(4,10);
     }
 
-    const countdown = document.createElement("div");
+    const countdown=document.createElement("div");
     countdown.className="countdown";
-    countdown.textContent =
-      daysBetween(now,e.start)+"d";
+    countdown.textContent=daysBetween(now,e.start)+"d";
 
-    const duration = document.createElement("div");
-    if (e.type==="trip") {
-      duration.textContent =
-        (daysBetween(e.start,e.end)+1)+"d";
-    } else {
-      duration.textContent = "-";
-    }
+    const duration=document.createElement("div");
+    duration.textContent=
+      e.type==="trip" ? (daysBetween(e.start,e.end)+1)+"d" : "-";
 
     row.appendChild(title);
     row.appendChild(date);
     row.appendChild(countdown);
     row.appendChild(duration);
-
     card.appendChild(row);
     container.appendChild(card);
   });
