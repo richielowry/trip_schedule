@@ -124,6 +124,14 @@ function getNextYearlyOccurrence(originalDate) {
   return next;
 }
 
+/* NEW FUNCTION */
+function formatSingleDate(date) {
+  const days = ["Sun","Mon","Tues","Wed","Thur","Fri","Sat"];
+  const dayName = days[date.getDay()];
+  const datePart = date.toDateString().slice(4,10);
+  return dayName + " " + datePart;
+}
+
 function parseCalendar(icsText) {
   const items = [];
   const data = unfoldICS(icsText);
@@ -150,7 +158,6 @@ function parseCalendar(icsText) {
     let startDate = originalStart;
     let endDate;
 
-    // Handle yearly recurring events
     if (rruleMatch && rruleMatch[1].includes("FREQ=YEARLY")) {
       startDate = getNextYearlyOccurrence(originalStart);
       endDate = startDate;
@@ -246,8 +253,7 @@ function render(data) {
         " – " +
         e.end.toDateString().slice(4,10);
     } else {
-      date.textContent =
-        e.start.toDateString().slice(4,10);
+      date.textContent = formatSingleDate(e.start);
     }
 
     const countdown = document.createElement("div");
