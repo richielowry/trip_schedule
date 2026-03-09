@@ -59,22 +59,11 @@ h1 {
   font-weight: 600;
 }
 
-.trip {
-  color: var(--trip);
-  font-size: 15px;
-}
+.trip { color: var(--trip); font-size: 15px; }
+.event { color: var(--event); }
+.holiday { color: var(--holiday); }
 
-.event {
-  color: var(--event);
-}
-
-.holiday {
-  color: var(--holiday);
-}
-
-.countdown {
-  font-weight: 600;
-}
+.countdown { font-weight: 600; }
 </style>
 </head>
 
@@ -94,6 +83,7 @@ h1 {
 <script>
 
 const DATA_URL = "https://raw.githubusercontent.com/richielowry/schedule-cache/main/schedule.json";
+const CACHE_KEY = "lordlowry_schedule";
 
 function formatSingleDate(date) {
   const days = ["Sun","Mon","Tues","Wed","Thur","Fri","Sat"];
@@ -141,6 +131,7 @@ function render(data) {
   });
 
   holidays.forEach(h => {
+
     const date = h.start;
 
     if (date >= now && date <= futureLimit) {
@@ -157,6 +148,7 @@ function render(data) {
       }
 
     }
+
   });
 
   combined.sort((a,b)=>a.start - b.start);
@@ -215,9 +207,37 @@ function render(data) {
 
 }
 
-fetch(DATA_URL)
-  .then(r => r.json())
-  .then(render);
+function loadCached() {
+
+  const cached = localStorage.getItem(CACHE_KEY);
+
+  if (cached) {
+    try {
+      render(JSON.parse(cached));
+    } catch {}
+  }
+
+}
+
+async function refreshData() {
+
+  try {
+
+    const res = await fetch(DATA_URL + "?t=" + Date.now());
+    const data = await res.json();
+
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+
+    render(data);
+
+  } catch (e) {
+    console.log("Offline or fetch failed");
+  }
+
+}
+
+loadCached();
+refreshData();
 
 </script>
 
