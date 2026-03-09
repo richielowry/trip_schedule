@@ -77,6 +77,7 @@ h1 {
 }
 </style>
 </head>
+
 <body>
 
 <h1>Lord Lowry</h1>
@@ -91,89 +92,14 @@ h1 {
 <div id="events"></div>
 
 <script>
-const ICS_URL = "https://calendar.google.com/calendar/ical/reggmyster%40gmail.com/private-98c5d3a6db4b47b17c7a083cc465a659/basic.ics";
 
-function unfoldICS(text) {
-  return text.replace(/\r?\n[ \t]/g, "");
-}
+const DATA_URL = "https://raw.githubusercontent.com/richielowry/schedule-cache/main/schedule.json";
 
-function parseDate(value) {
-  const datePart = value.substring(0,8);
-  return new Date(
-    parseInt(datePart.substring(0,4)),
-    parseInt(datePart.substring(4,6)) - 1,
-    parseInt(datePart.substring(6,8))
-  );
-}
-
-function adjustEndDate(start, endRaw) {
-  if (!endRaw) return start;
-  const end = parseDate(endRaw);
-  if (end > start) end.setDate(end.getDate() - 1);
-  return end;
-}
-
-function getNextYearlyOccurrence(originalDate) {
-  const now = new Date();
-  let next = new Date(now.getFullYear(), originalDate.getMonth(), originalDate.getDate());
-
-  if (next < now) {
-    next = new Date(now.getFullYear() + 1, originalDate.getMonth(), originalDate.getDate());
-  }
-
-  return next;
-}
-
-/* NEW FUNCTION */
 function formatSingleDate(date) {
   const days = ["Sun","Mon","Tues","Wed","Thur","Fri","Sat"];
   const dayName = days[date.getDay()];
   const datePart = date.toDateString().slice(4,10);
   return dayName + " " + datePart;
-}
-
-function parseCalendar(icsText) {
-  const items = [];
-  const data = unfoldICS(icsText);
-  const blocks = data.split("BEGIN:VEVENT");
-
-  blocks.forEach(block => {
-    const summaryMatch = block.match(/SUMMARY:(.+)/);
-    const startMatch = block.match(/DTSTART[^:]*:(.+)/);
-    const endMatch = block.match(/DTEND[^:]*:(.+)/);
-    const rruleMatch = block.match(/RRULE:(.+)/);
-
-    if (!summaryMatch || !startMatch) return;
-
-    const rawTitle = summaryMatch[1].trim();
-    const lower = rawTitle.toLowerCase();
-
-    let type = null;
-    if (lower.includes("trip")) type = "trip";
-    if (lower.includes("event")) type = "event";
-
-    if (!type) return;
-
-    const originalStart = parseDate(startMatch[1]);
-    let startDate = originalStart;
-    let endDate;
-
-    if (rruleMatch && rruleMatch[1].includes("FREQ=YEARLY")) {
-      startDate = getNextYearlyOccurrence(originalStart);
-      endDate = startDate;
-    } else {
-      endDate = adjustEndDate(startDate, endMatch ? endMatch[1] : null);
-    }
-
-    items.push({
-      type,
-      title: rawTitle.replace(/trip|event/i,"").trim(),
-      start: startDate,
-      end: endDate
-    });
-  });
-
-  return items;
 }
 
 function daysBetween(a,b) {
@@ -184,20 +110,8 @@ function overlaps(trip, holidayDate) {
   return holidayDate >= trip.start && holidayDate <= trip.end;
 }
 
-async function fetchData() {
-  const proxy = "https://api.allorigins.win/raw?url=";
-  const calRes = await fetch(proxy + encodeURIComponent(ICS_URL));
-  const calText = await calRes.text();
-  const calendarItems = parseCalendar(calText);
-
-  const year = new Date().getFullYear();
-  const holidayRes = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/IE`);
-  const holidays = await holidayRes.json();
-
-  return { calendarItems, holidays };
-}
-
 function render(data) {
+
   const container = document.getElementById("events");
   container.innerHTML = "";
 
@@ -205,33 +119,50 @@ function render(data) {
   const futureLimit = new Date();
   futureLimit.setMonth(now.getMonth() + 12);
 
-  let combined = [];
-  const tripsOnly = data.calendarItems.filter(e => e.type==="trip");
+  const calendarItems = data.calendarItems.map(e => ({
+    ...e,
+    start: new Date(e.start),
+    end: new Date(e.end)
+  }));
 
-  data.calendarItems.forEach(e => {
+  const holidays = data.holidays.map(h => ({
+    ...h,
+    start: new Date(h.date),
+    end: new Date(h.date)
+  }));
+
+  let combined = [];
+  const tripsOnly = calendarItems.filter(e => e.type==="trip");
+
+  calendarItems.forEach(e => {
     if (e.start >= now && e.start <= futureLimit) {
       combined.push(e);
     }
   });
 
-  data.holidays.forEach(h => {
-    const date = new Date(h.date);
+  holidays.forEach(h => {
+    const date = h.start;
+
     if (date >= now && date <= futureLimit) {
+
       const conflict = tripsOnly.some(t => overlaps(t,date));
+
       if (!conflict) {
         combined.push({
           type:"holiday",
-          title: h.name,
-          start: date,
-          end: date
+          title:h.name,
+          start:date,
+          end:date
         });
       }
+
     }
   });
 
   combined.sort((a,b)=>a.start - b.start);
 
   combined.forEach(e=>{
+
     const card = document.createElement("div");
     card.className="card";
 
@@ -248,23 +179,26 @@ function render(data) {
     const date = document.createElement("div");
 
     if (e.start.getTime() !== e.end.getTime()) {
+
       date.textContent =
         e.start.toDateString().slice(4,10) +
         " – " +
         e.end.toDateString().slice(4,10);
+
     } else {
+
       date.textContent = formatSingleDate(e.start);
+
     }
 
     const countdown = document.createElement("div");
     countdown.className="countdown";
-    countdown.textContent =
-      daysBetween(now,e.start)+"d";
+    countdown.textContent = daysBetween(now,e.start)+"d";
 
     const duration = document.createElement("div");
+
     if (e.type==="trip") {
-      duration.textContent =
-        (daysBetween(e.start,e.end)+1)+"d";
+      duration.textContent = (daysBetween(e.start,e.end)+1)+"d";
     } else {
       duration.textContent = "-";
     }
@@ -276,10 +210,15 @@ function render(data) {
 
     card.appendChild(row);
     container.appendChild(card);
+
   });
+
 }
 
-fetchData().then(render);
+fetch(DATA_URL)
+  .then(r => r.json())
+  .then(render);
+
 </script>
 
 </body>
