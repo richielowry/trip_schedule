@@ -6,238 +6,272 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-:root {
-  --bg: #f3f4f6;
-  --card: #ffffff;
-  --trip: #1d4ed8;
-  --event: #15803d;
-  --holiday: #b45309;
-  --text: #111827;
-  --muted: #6b7280;
-  --shadow: 0 4px 12px rgba(0,0,0,0.06);
+:root{
+--bg:#f3f4f6;
+--card:#ffffff;
+--trip:#1d4ed8;
+--event:#15803d;
+--holiday:#b45309;
+--text:#111827;
+--muted:#6b7280;
+--shadow:0 4px 12px rgba(0,0,0,0.06);
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: var(--bg);
-  padding: 20px 14px 60px;
-  color: var(--text);
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+background:var(--bg);
+padding:20px 14px 60px;
+color:var(--text);
+-webkit-user-select:none;
 }
 
-h1 {
-  text-align: center;
-  font-weight: 700;
-  margin-bottom: 25px;
+h1{
+text-align:center;
+font-weight:700;
+margin-bottom:8px;
 }
 
-.table-header {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 0.8fr 0.8fr;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  padding: 0 6px 8px 6px;
+#updated{
+text-align:center;
+font-size:12px;
+color:var(--muted);
+margin-bottom:18px;
 }
 
-.card {
-  background: var(--card);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 8px;
-  box-shadow: var(--shadow);
+.table-header{
+display:grid;
+grid-template-columns:2fr 1.2fr .8fr .8fr;
+font-size:12px;
+font-weight:600;
+color:var(--muted);
+padding:0 6px 8px 6px;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 0.8fr 0.8fr;
-  align-items: center;
-  font-size: 14px;
+.card{
+background:var(--card);
+border-radius:12px;
+padding:12px;
+margin-bottom:8px;
+box-shadow:var(--shadow);
+animation:fade .3s ease;
 }
 
-.title {
-  font-weight: 600;
+@keyframes fade{
+from{opacity:0;transform:translateY(6px)}
+to{opacity:1;transform:translateY(0)}
 }
 
-.trip { color: var(--trip); font-size: 15px; }
-.event { color: var(--event); }
-.holiday { color: var(--holiday); }
+.row{
+display:grid;
+grid-template-columns:2fr 1.2fr .8fr .8fr;
+align-items:center;
+font-size:14px;
+}
 
-.countdown { font-weight: 600; }
+.title{font-weight:600}
+.trip{color:var(--trip)}
+.event{color:var(--event)}
+.holiday{color:var(--holiday)}
+.countdown{font-weight:600}
+
+.refresh{
+position:fixed;
+bottom:20px;
+right:20px;
+background:#111827;
+color:white;
+border-radius:20px;
+padding:10px 14px;
+font-size:12px;
+opacity:.85;
+}
+
 </style>
 </head>
 
 <body>
 
 <h1>Lord Lowry</h1>
+<div id="updated"></div>
 
 <div class="table-header">
-  <div>Event</div>
-  <div>Date</div>
-  <div>C'down</div>
-  <div>Duration</div>
+<div>Event</div>
+<div>Date</div>
+<div>C'down</div>
+<div>Duration</div>
 </div>
 
 <div id="events"></div>
 
+<div class="refresh" onclick="refreshData()">Refresh</div>
+
 <script>
 
-const DATA_URL = "https://raw.githubusercontent.com/richielowry/schedule-cache/main/schedule.json";
-const CACHE_KEY = "lordlowry_schedule";
+const DATA_URL="https://raw.githubusercontent.com/richielowry/schedule-cache/main/schedule.json"
+const CACHE_KEY="lordlowry_schedule"
 
-function formatSingleDate(date) {
-  const days = ["Sun","Mon","Tues","Wed","Thur","Fri","Sat"];
-  const dayName = days[date.getDay()];
-  const datePart = date.toDateString().slice(4,10);
-  return dayName + " " + datePart;
+function formatSingleDate(date){
+const days=["Sun","Mon","Tues","Wed","Thur","Fri","Sat"]
+return days[date.getDay()]+" "+date.toDateString().slice(4,10)
 }
 
-function daysBetween(a,b) {
-  return Math.ceil((b - a)/(1000*60*60*24));
+function daysBetween(a,b){
+return Math.ceil((b-a)/(1000*60*60*24))
 }
 
-function overlaps(trip, holidayDate) {
-  return holidayDate >= trip.start && holidayDate <= trip.end;
+function overlaps(trip,holidayDate){
+return holidayDate>=trip.start&&holidayDate<=trip.end
 }
 
-function render(data) {
+function render(data){
 
-  const container = document.getElementById("events");
-  container.innerHTML = "";
+const container=document.getElementById("events")
+container.innerHTML=""
 
-  const now = new Date();
-  const futureLimit = new Date();
-  futureLimit.setMonth(now.getMonth() + 12);
+const now=new Date()
+const futureLimit=new Date()
+futureLimit.setMonth(now.getMonth()+12)
 
-  const calendarItems = data.calendarItems.map(e => ({
-    ...e,
-    start: new Date(e.start),
-    end: new Date(e.end)
-  }));
+const calendarItems=data.calendarItems.map(e=>({
+...e,
+start:new Date(e.start),
+end:new Date(e.end)
+}))
 
-  const holidays = data.holidays.map(h => ({
-    ...h,
-    start: new Date(h.date),
-    end: new Date(h.date)
-  }));
+const holidays=data.holidays.map(h=>({
+...h,
+start:new Date(h.date),
+end:new Date(h.date)
+}))
 
-  let combined = [];
-  const tripsOnly = calendarItems.filter(e => e.type==="trip");
+let combined=[]
+const tripsOnly=calendarItems.filter(e=>e.type==="trip")
 
-  calendarItems.forEach(e => {
-    if (e.start >= now && e.start <= futureLimit) {
-      combined.push(e);
-    }
-  });
+calendarItems.forEach(e=>{
+if(e.start>=now&&e.start<=futureLimit){
+combined.push(e)
+}
+})
 
-  holidays.forEach(h => {
+holidays.forEach(h=>{
 
-    const date = h.start;
+const date=h.start
 
-    if (date >= now && date <= futureLimit) {
+if(date>=now&&date<=futureLimit){
 
-      const conflict = tripsOnly.some(t => overlaps(t,date));
+const conflict=tripsOnly.some(t=>overlaps(t,date))
 
-      if (!conflict) {
-        combined.push({
-          type:"holiday",
-          title:h.name,
-          start:date,
-          end:date
-        });
-      }
-
-    }
-
-  });
-
-  combined.sort((a,b)=>a.start - b.start);
-
-  combined.forEach(e=>{
-
-    const card = document.createElement("div");
-    card.className="card";
-
-    const row = document.createElement("div");
-    row.className="row";
-
-    const title = document.createElement("div");
-    title.className="title "+e.type;
-
-    if (e.type==="trip") title.textContent = "✈️ " + e.title;
-    else if (e.type==="event") title.textContent = "🎂 " + e.title;
-    else title.textContent = "🇮🇪 " + e.title;
-
-    const date = document.createElement("div");
-
-    if (e.start.getTime() !== e.end.getTime()) {
-
-      date.textContent =
-        e.start.toDateString().slice(4,10) +
-        " – " +
-        e.end.toDateString().slice(4,10);
-
-    } else {
-
-      date.textContent = formatSingleDate(e.start);
-
-    }
-
-    const countdown = document.createElement("div");
-    countdown.className="countdown";
-    countdown.textContent = daysBetween(now,e.start)+"d";
-
-    const duration = document.createElement("div");
-
-    if (e.type==="trip") {
-      duration.textContent = (daysBetween(e.start,e.end)+1)+"d";
-    } else {
-      duration.textContent = "-";
-    }
-
-    row.appendChild(title);
-    row.appendChild(date);
-    row.appendChild(countdown);
-    row.appendChild(duration);
-
-    card.appendChild(row);
-    container.appendChild(card);
-
-  });
+if(!conflict){
+combined.push({
+type:"holiday",
+title:h.name,
+start:date,
+end:date
+})
+}
 
 }
 
-function loadCached() {
+})
 
-  const cached = localStorage.getItem(CACHE_KEY);
+combined.sort((a,b)=>a.start-b.start)
 
-  if (cached) {
-    try {
-      render(JSON.parse(cached));
-    } catch {}
-  }
+combined.forEach(e=>{
+
+const card=document.createElement("div")
+card.className="card"
+
+const row=document.createElement("div")
+row.className="row"
+
+const title=document.createElement("div")
+title.className="title "+e.type
+
+if(e.type==="trip")title.textContent="✈️ "+e.title
+else if(e.type==="event")title.textContent="🎂 "+e.title
+else title.textContent="🇮🇪 "+e.title
+
+const date=document.createElement("div")
+
+if(e.start.getTime()!==e.end.getTime()){
+date.textContent=e.start.toDateString().slice(4,10)+" – "+e.end.toDateString().slice(4,10)
+}else{
+date.textContent=formatSingleDate(e.start)
+}
+
+const countdown=document.createElement("div")
+countdown.className="countdown"
+countdown.textContent=daysBetween(now,e.start)+"d"
+
+const duration=document.createElement("div")
+
+if(e.type==="trip"){
+duration.textContent=(daysBetween(e.start,e.end)+1)+"d"
+}else{
+duration.textContent="-"
+}
+
+row.appendChild(title)
+row.appendChild(date)
+row.appendChild(countdown)
+row.appendChild(duration)
+
+card.appendChild(row)
+container.appendChild(card)
+
+})
+
+document.getElementById("updated").textContent="Updated "+new Date().toLocaleTimeString()
 
 }
 
-async function refreshData() {
+function loadCached(){
+const cached=localStorage.getItem(CACHE_KEY)
+if(cached){
+try{render(JSON.parse(cached))}catch{}
+}
+}
 
-  try {
+async function refreshData(){
 
-    const res = await fetch(DATA_URL + "?t=" + Date.now());
-    const data = await res.json();
+try{
 
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+const res=await fetch(DATA_URL+"?t="+Date.now())
+const data=await res.json()
 
-    render(data);
+localStorage.setItem(CACHE_KEY,JSON.stringify(data))
+render(data)
 
-  } catch (e) {
-    console.log("Offline or fetch failed");
-  }
+}catch(e){
+console.log("Offline or fetch failed")
+}
 
 }
 
-loadCached();
-refreshData();
+function scheduleDailyRefresh(){
+
+const now=new Date()
+
+const next=new Date()
+next.setHours(6,5,0,0)
+
+if(now>next){
+next.setDate(next.getDate()+1)
+}
+
+const timeout=next-now
+
+setTimeout(()=>{
+refreshData()
+scheduleDailyRefresh()
+},timeout)
+
+}
+
+loadCached()
+refreshData()
+scheduleDailyRefresh()
 
 </script>
 
